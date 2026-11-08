@@ -11,5 +11,6 @@ The portable build includes these components. Their notices are in the `licenses
 - [python-zstandard](https://github.com/indygreg/python-zstandard) — BSD.
 - [Zstandard](https://github.com/facebook/zstd) — BSD or GPLv2.
 - [PyInstaller](https://pyinstaller.org/en/stable/license.html) — GPL with an exception for distributed applications.
+- [Octicons](https://github.com/primer/octicons) — MIT. The GitHub icon is used under the license in `docs/licenses/Octicons-LICENSE.txt`.
 
 NupFileViewer source is distributed under the [MIT License](LICENSE).

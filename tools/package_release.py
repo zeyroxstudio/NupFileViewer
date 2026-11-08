@@ -21,8 +21,12 @@ for name in ('vcruntime140.dll', 'vcruntime140_1.dll'):
     if (qt_dir / name).is_file():
         shutil.copy2(qt_dir / name, internal / name)
 
-for name in ('README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md'):
+for name in ('LICENSE', 'THIRD-PARTY-NOTICES.md'):
     shutil.copy2(root / name, release / name)
+readme = (root / 'README.md').read_text(encoding='utf-8')
+(release / 'README.md').write_text(
+    readme.replace('src="nupviewer/logo.svg"', 'src="source/nupviewer/logo.svg"'), encoding='utf-8'
+)
 
 source = release / 'source'
 source.mkdir(exist_ok=True)
@@ -33,6 +37,7 @@ for folder in ('nupviewer', 'tests', 'tools'):
         shutil.copy2(file, target / file.name)
 shutil.copy2(root / 'nupviewer' / 'apply_update.ps1', source / 'nupviewer' / 'apply_update.ps1')
 shutil.copy2(root / 'nupviewer' / 'logo.svg', source / 'nupviewer' / 'logo.svg')
+shutil.copy2(root / 'nupviewer' / 'github.svg', source / 'nupviewer' / 'github.svg')
 translations = internal / 'translations'
 translations.mkdir(exist_ok=True)
 for language in ('it', 'es', 'fr'):

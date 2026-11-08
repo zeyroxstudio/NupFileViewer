@@ -7,8 +7,8 @@ import sys
 import threading
 import time
 
-from PySide6.QtCore import Qt, QAbstractTableModel, QLibraryInfo, QLocale, QModelIndex, QSettings, QSize, QThread, QTranslator, Signal, QTimer
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QKeySequence, QPainter, QPalette, QPixmap, QImageReader
+from PySide6.QtCore import Qt, QAbstractTableModel, QLibraryInfo, QLocale, QModelIndex, QSettings, QSize, QThread, QTranslator, QUrl, Signal, QTimer
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QKeySequence, QPainter, QPalette, QPixmap, QImageReader
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QSizePolicy,
@@ -368,6 +368,18 @@ class Window(QMainWindow):
         self.integrity_badge = label()
         self.statusBar().addPermanentWidget(self.integrity_badge)
         self.integrity_badge.hide()
+        self.github_button = QToolButton()
+        self.github_button.setIcon(svg_icon("github.svg"))
+        self.github_button.setIconSize(QSize(16, 16))
+        self.github_button.setFixedSize(24, 22)
+        self.github_button.setAutoRaise(True)
+        self.github_button.setToolTip("GitHub · zeyroxstudio")
+        self.github_button.setAccessibleName(tr("Open GitHub profile"))
+        self.github_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.github_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://github.com/zeyroxstudio"))
+        )
+        self.statusBar().addPermanentWidget(self.github_button)
         self.controls = [self.report_button, self.icon_button, self.package_list, self.search,
                          self.recursive, self.tree, self.table, self.preview_button, self.verify_selected_button,
                          self.verify_button, self.export_view_button, self.export_button,
@@ -934,8 +946,8 @@ def configure_language(app, code):
         app.qt_translator = translator
 
 
-def application_icon():
-    renderer = QSvgRenderer(str(Path(__file__).with_name("logo.svg")))
+def svg_icon(filename):
+    renderer = QSvgRenderer(str(Path(__file__).with_name(filename)))
     icon = QIcon()
     for size in (16, 24, 32, 48, 64, 128, 256):
         pixmap = QPixmap(size, size)
@@ -956,7 +968,7 @@ def main():
         args = args[2:]
     app = QApplication([sys.argv[0]])
     app.setApplicationName("NupFileViewer")
-    app.setWindowIcon(application_icon())
+    app.setWindowIcon(svg_icon("logo.svg"))
     configure_appearance(app)
     QImageReader.setAllocationLimit(32)
     settings = QSettings("zeyroxstudio", "NupFileViewer")

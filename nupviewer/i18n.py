@@ -19,6 +19,7 @@ def tr(message, *args):
 
 
 MESSAGES = {
+    'Open GitHub profile': {'it': 'Apri il profilo GitHub', 'es': 'Abrir el perfil de GitHub', 'fr': 'Ouvrir le profil GitHub'},
     'Application language': {'it': 'Lingua dell’app', 'es': 'Idioma de la aplicación', 'fr': 'Langue de l’application'},
     'Canceled. Completed files remain at the destination.': {'it': 'Operazione annullata. I file già completati restano nella destinazione.', 'es': 'Operación cancelada. Los archivos completados siguen en el destino.', 'fr': 'Opération annulée. Les fichiers terminés restent dans le dossier de destination.'},
     'File': {'it': 'File', 'es': 'Archivo', 'fr': 'Fichier'},
