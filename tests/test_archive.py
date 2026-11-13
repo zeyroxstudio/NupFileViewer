@@ -73,6 +73,43 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(archive.preview(archive.files[2]), b"")
         self.assertIn("3 file", archive.verify())
 
+    def test_ncm_does_not_supply_display_version(self):
+        data = fixture()
+        struct.pack_into("<IBB", data, 128 + 48 + 20, 917504, 1, 1)
+        data[80:96] = hashlib.sha256(struct.pack("<QIB", 0x0400123456789000, 917504, 1)).digest()[:16]
+        package, = self.load(rehash(data)).report()["packages"]
+        self.assertEqual(package["version_raw"], 917504)
+        self.assertEqual(package["display_version"], "")
+        self.assertTrue(package["standalone_update"])
+
+    def test_localized_icons_and_package_metadata_in_report(self):
+        def tlv(kind, value):
+            return struct.pack("<HHI", kind, 0, len(value)) + value
+
+        def localized(tag, value):
+            return bytes([len(tag)]) + tag + struct.pack("<I", len(value)) + value
+
+        data = fixture()
+        data.extend(bytes((-len(data)) % 16))
+        offset = len(data)
+        icon = b"image bytes"
+        metadata = b"".join((
+            tlv(2, bytes(0x4000)), tlv(4, b"1.8.0"), tlv(8, b"Example dump"),
+            tlv(9, localized(b"it", b"Titolo")),
+            tlv(10, localized(b"FR", icon)),
+        ))
+        data.extend(metadata)
+        struct.pack_into("<QI", data, 128 + 48 + 32, offset, len(metadata))
+        struct.pack_into("<Q", data, 64, len(data))
+        archive = self.load(rehash(data))
+        self.assertEqual(archive.packages[0].icons, {"fr": icon})
+        package, = archive.report()["packages"]
+        self.assertEqual(package["display_version"], "1.8.0")
+        self.assertEqual(package["dump_name"], "Example dump")
+        self.assertTrue(package["has_nacp"])
+        self.assertEqual(package["localized_titles"], {"it": "Titolo"})
+        self.assertEqual(package["localized_icons"], ["fr"])
+
     def test_export_roundtrip_and_refuse_overwrite(self):
         a = self.load()
         a.export(a.files, self.root)

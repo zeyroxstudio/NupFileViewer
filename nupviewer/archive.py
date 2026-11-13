@@ -86,6 +86,7 @@ class Package:
     meta_size: int
     metadata: dict[int, bytes] = field(default_factory=dict)
     titles: dict[str, str] = field(default_factory=dict)
+    icons: dict[str, bytes] = field(default_factory=dict)
 
     @property
     def title(self):
@@ -96,7 +97,7 @@ class Package:
 
     @property
     def display_version(self):
-        return self.text(4) or f"{self.version >> 16}.{self.version >> 8 & 255}.{self.version & 255} (NCM)"
+        return self.text(4)
 
     @property
     def kind_name(self):
@@ -273,6 +274,8 @@ class Archive:
                     seen.add(lang)
                     if kind == 9:
                         pkg.titles[lang] = value[pos:pos+length].decode("utf-8").rstrip("\0")
+                    else:
+                        pkg.icons[lang] = value[pos:pos+length]
                     pos += length
 
     def _index_trees(self, cancel):
@@ -446,7 +449,10 @@ class Archive:
             "packages": [{"title_id": f"{p.title_id:016X}", "title": p.title,
                           "kind": p.kind_name, "version_raw": p.version,
                           "display_version": p.display_version, "publisher": p.text(6),
-                          "build_id": p.metadata.get(7, b"").hex(), "localized_titles": p.titles}
+                          "build_id": p.metadata.get(7, b"").hex(),
+                          "dump_name": p.text(8), "has_nacp": 2 in p.metadata,
+                          "standalone_update": p.kind == 1 and bool(p.flags & 1),
+                          "localized_titles": p.titles, "localized_icons": sorted(p.icons)}
                          for p in self.packages],
         }
 

@@ -10,7 +10,7 @@ A Windows viewer for NUP v1 archives. Browse and extract Raw and Zstandard files
 
 Extract the ZIP to a folder and run `NupFileViewer.exe`. Choose English, Italian, Spanish, or French on first launch. To change it later, use **Options → Language** and restart the app.
 
-Drop a `.nup` file on the window or press **Ctrl+O**. **Overview** shows package and title information. **Contents** lets you browse, search, preview, and extract files. Press **Ctrl+F** to search the package.
+Drop a `.nup` file on the window or press **Ctrl+O**. In **Overview**, pick a package to see its title, display version, and raw NCM version. Use **Details…** to see the dump name, Build ID, and any localized titles and icons. **Contents** lets you browse, search, preview, and extract files. Press **Ctrl+F** to search the selected package.
 
 ## Integrity
 

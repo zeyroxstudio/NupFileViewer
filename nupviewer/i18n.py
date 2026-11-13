@@ -19,6 +19,20 @@ def tr(message, *args):
 
 
 MESSAGES = {
+    'Package details': {'it': 'Dettagli pacchetto', 'es': 'Detalles del paquete', 'fr': 'Détails du paquet'},
+    'Details…': {'it': 'Dettagli…', 'es': 'Detalles…', 'fr': 'Détails…'},
+    'Not declared': {'it': 'Non dichiarata', 'es': 'No indicada', 'fr': 'Non déclarée'},
+    'NCM version': {'it': 'Versione NCM', 'es': 'Versión NCM', 'fr': 'Version NCM'},
+    'Dump name': {'it': 'Nome dump', 'es': 'Nombre del volcado', 'fr': 'Nom du dump'},
+    'Absent': {'it': 'Assente', 'es': 'Ausente', 'fr': 'Absent'},
+    'Present': {'it': 'Presente', 'es': 'Presente', 'fr': 'Présente'},
+    'Language': {'it': 'Lingua', 'es': 'Idioma', 'fr': 'Langue'},
+    'Languages': {'it': 'Lingue', 'es': 'Idiomas', 'fr': 'Langues'},
+    'Icon': {'it': 'Icona', 'es': 'Icono', 'fr': 'Icône'},
+    'Preview icon': {'it': 'Anteprima icona', 'es': 'Vista previa del icono', 'fr': 'Aperçu de l’icône'},
+    'This icon could not be decoded.': {'it': 'Impossibile leggere questa icona.', 'es': 'No se pudo leer este icono.', 'fr': 'Impossible de lire cette icône.'},
+    'No localized metadata in this package.': {'it': 'Il pacchetto non contiene metadati localizzati.', 'es': 'El paquete no contiene metadatos localizados.', 'fr': 'Ce paquet ne contient pas de métadonnées localisées.'},
+    'Base missing': {'it': 'Base assente', 'es': 'Falta el juego base', 'fr': 'Jeu de base absent'},
     'Open GitHub profile': {'it': 'Apri il profilo GitHub', 'es': 'Abrir el perfil de GitHub', 'fr': 'Ouvrir le profil GitHub'},
     'Application language': {'it': 'Lingua dell’app', 'es': 'Idioma de la aplicación', 'fr': 'Langue de l’application'},
     'Canceled. Completed files remain at the destination.': {'it': 'Operazione annullata. I file già completati restano nella destinazione.', 'es': 'Operación cancelada. Los archivos completados siguen en el destino.', 'fr': 'Opération annulée. Les fichiers terminés restent dans le dossier de destination.'},

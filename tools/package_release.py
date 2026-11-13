@@ -43,7 +43,7 @@ translations.mkdir(exist_ok=True)
 for language in ('it', 'es', 'fr'):
     name = f'qtbase_{language}.qm'
     shutil.copy2(qt_dir / 'translations' / name, translations / name)
-for name in ('main.py', 'requirements.txt', 'build.ps1', 'README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md'):
+for name in ('main.py', 'requirements.txt', 'build.ps1', 'README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'CHANGELOG.md'):
     shutil.copy2(root / name, source / name)
 (source / 'docs').mkdir(exist_ok=True)
 for name in ('NUP-SPEC.reference.md', 'NUP-LICENSE.txt'):

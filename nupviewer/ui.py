@@ -7,14 +7,14 @@ import sys
 import threading
 import time
 
-from PySide6.QtCore import Qt, QAbstractTableModel, QLibraryInfo, QLocale, QModelIndex, QSettings, QSize, QThread, QTranslator, QUrl, Signal, QTimer
+from PySide6.QtCore import Qt, QAbstractTableModel, QLibraryInfo, QLocale, QModelIndex, QSettings, QSignalBlocker, QSize, QThread, QTranslator, QUrl, Signal, QTimer
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QKeySequence, QPainter, QPalette, QPixmap, QImageReader
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QSizePolicy,
     QPushButton, QToolButton, QDialog, QInputDialog, QLineEdit, QListWidget, QTreeWidget, QTreeWidgetItem,
     QTableView, QTableWidget, QTableWidgetItem, QTabWidget, QGroupBox, QSplitter, QStackedWidget, QPlainTextEdit, QFileDialog, QMessageBox,
-    QProgressBar, QHeaderView, QAbstractItemView, QCheckBox, QMenu,
+    QProgressBar, QHeaderView, QAbstractItemView, QCheckBox, QComboBox, QMenu,
 )
 
 from . import __version__, updates
@@ -47,6 +47,107 @@ def label(text="", name=None):
     if name:
         widget.setObjectName(name)
     return widget
+
+
+def package_caption(package):
+    version = package.display_version or f"NCM {package.version}"
+    return f"{package.kind_name} · {version}"
+
+
+class PackageDetails(QDialog):
+    def __init__(self, package, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr('Package details'))
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
+        self.package = package
+        self.languages = sorted(package.titles.keys() | package.icons.keys())
+        layout = QVBoxLayout(self)
+        tabs = QTabWidget()
+        layout.addWidget(tabs)
+
+        fields = (
+            (tr('Title'), package.title),
+            (tr('Type'), package.kind_name),
+            (tr('Title ID'), f"{package.title_id:016X}"),
+            (tr('Version'), package.display_version or tr('Not declared')),
+            (tr('NCM version'), str(package.version)),
+            (tr('Publisher'), package.text(6)),
+            (tr('Dump name'), package.text(8)),
+            ('Build ID', package.metadata.get(7, b'').hex().upper()),
+            ('NACP', human_size(len(package.metadata[2])) if 2 in package.metadata else tr('Absent')),
+        )
+        info = QPlainTextEdit()
+        info.setReadOnly(True)
+        info.setPlainText("\n\n".join(f"{name}\n{value or '—'}" for name, value in fields))
+        tabs.addTab(info, tr('Metadata'))
+
+        page = QWidget()
+        languages_layout = QVBoxLayout(page)
+        if self.languages:
+            self.table = QTableWidget(len(self.languages), 3)
+            self.table.setHorizontalHeaderLabels((tr('Language'), tr('Title'), tr('Icon')))
+            self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+            self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.table.verticalHeader().hide()
+            header = self.table.horizontalHeader()
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+            for row, code in enumerate(self.languages):
+                title = package.titles.get(code) or '—'
+                icon = tr('Present') if code in package.icons else '—'
+                for column, value in enumerate((code, title, icon)):
+                    item = QTableWidgetItem(value)
+                    item.setToolTip(value)
+                    self.table.setItem(row, column, item)
+            languages_layout.addWidget(self.table)
+            self.icon_preview = QPushButton(tr('Preview icon'))
+            self.icon_preview.clicked.connect(self.show_language_icon)
+            self.table.currentCellChanged.connect(self.update_icon_button)
+            languages_layout.addWidget(self.icon_preview)
+            self.table.setCurrentCell(0, 0)
+            self.update_icon_button()
+        else:
+            languages_layout.addWidget(label(tr('No localized metadata in this package.')))
+            languages_layout.addStretch()
+        tabs.addTab(page, tr('Languages'))
+        close = QPushButton(tr('Close'))
+        close.clicked.connect(self.accept)
+        layout.addWidget(close, alignment=Qt.AlignmentFlag.AlignRight)
+        self.setFixedSize(420, 395)
+
+    def update_icon_button(self, *_):
+        row = self.table.currentRow()
+        self.icon_preview.setEnabled(row >= 0 and self.languages[row] in self.package.icons)
+
+    def show_language_icon(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+        code = self.languages[row]
+        icon = QPixmap()
+        if not icon.loadFromData(self.package.icons.get(code, b'')):
+            QMessageBox.information(self, tr('Preview icon'), tr('This icon could not be decoded.'))
+            return
+        show_image(self, f"{tr('Icon')} · {code}", icon)
+
+
+def show_image(parent, title, image):
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(title)
+    dialog.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
+    layout = QVBoxLayout(dialog)
+    preview = QLabel()
+    preview.setPixmap(image.scaled(
+        360, 360, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+    ))
+    layout.addWidget(preview, alignment=Qt.AlignmentFlag.AlignCenter)
+    close = QPushButton(tr('Close'))
+    close.clicked.connect(dialog.accept)
+    layout.addWidget(close, alignment=Qt.AlignmentFlag.AlignCenter)
+    dialog.setFixedSize(dialog.sizeHint())
+    dialog.exec()
 
 
 class Job(QThread):
@@ -198,8 +299,21 @@ class Window(QMainWindow):
         package_grid = QGridLayout(package_box)
         package_grid.setContentsMargins(5, 4, 5, 4)
         package_grid.setSpacing(3)
-        self.package_kind = self.add_field(package_grid, tr('Type'), 0, 0)
-        self.title_id = self.add_field(package_grid, tr('Title ID'), 0, 1)
+        self.package_summary = label("", "muted")
+        self.package_summary.setWordWrap(True)
+        package_grid.addWidget(self.package_summary, 0, 0, 1, 2)
+        self.package_picker = QComboBox()
+        self.package_picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.package_picker.setMinimumContentsLength(12)
+        self.package_picker.setAccessibleName(tr('Packages'))
+        self.package_picker.currentIndexChanged.connect(self.change_package)
+        package_grid.addWidget(self.package_picker, 1, 0)
+        self.package_details_button = QPushButton(tr('Details…'))
+        self.package_details_button.clicked.connect(self.show_package_details)
+        package_grid.addWidget(self.package_details_button, 1, 1)
+        self.title_id = self.add_field(package_grid, tr('Title ID'), 2, 0)
+        self.ncm_version = self.add_field(package_grid, tr('NCM version'), 2, 1)
+        package_grid.setColumnStretch(0, 2)
         summary_layout.addWidget(package_box)
 
         self.hero = QGroupBox(tr('Title information'))
@@ -215,8 +329,8 @@ class Window(QMainWindow):
         self.cover.setObjectName("cover")
         self.cover.setText("NUP")
         self.cover.setAccessibleName(tr('Enlarge cover'))
-        self.cover.setFixedSize(216, 216)
-        self.cover.setIconSize(QSize(212, 212))
+        self.cover.setFixedSize(184, 184)
+        self.cover.setIconSize(QSize(180, 180))
         self.cover.setEnabled(False)
         self.cover.clicked.connect(self.show_cover)
         self.cover.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -380,7 +494,8 @@ class Window(QMainWindow):
             lambda: QDesktopServices.openUrl(QUrl("https://github.com/zeyroxstudio"))
         )
         self.statusBar().addPermanentWidget(self.github_button)
-        self.controls = [self.report_button, self.icon_button, self.package_list, self.search,
+        self.controls = [self.report_button, self.icon_button, self.package_list, self.package_picker,
+                         self.package_details_button, self.search,
                          self.recursive, self.tree, self.table, self.preview_button, self.verify_selected_button,
                          self.verify_button, self.export_view_button, self.export_button,
                          details_button, self.verify_summary_button, self.close_archive_action]
@@ -629,12 +744,25 @@ class Window(QMainWindow):
         self.search.clear()
         self.search_timer.stop()
         self.preview_text.setPlainText(tr('Double-click a file to preview up to 64 KiB.'))
-        self.package_list.blockSignals(True)
-        self.package_list.clear()
-        for p in archive.packages:
-            self.package_list.addItem(f"{p.kind_name}  v{p.display_version}  ({p.title_id:016X})")
-        self.package_list.setCurrentRow(0)
-        self.package_list.blockSignals(False)
+        with QSignalBlocker(self.package_list), QSignalBlocker(self.package_picker):
+            self.package_list.clear()
+            self.package_picker.clear()
+            for p in archive.packages:
+                caption = package_caption(p)
+                self.package_list.addItem(f"{caption}  ({p.title_id:016X})")
+                self.package_picker.addItem(caption)
+        groups = {}
+        for package in archive.packages:
+            groups.setdefault(package.kind, []).append(package)
+        summary = [tr('Base missing')] if 0 not in groups else []
+        for kind, packages in sorted(groups.items()):
+            caption = f"{len(packages)} × {packages[0].kind_name}"
+            if kind == 1:
+                newest = max(packages, key=lambda p: p.version)
+                version = newest.display_version or f"NCM {newest.version}"
+                caption += f" ({version})"
+            summary.append(caption)
+        self.package_summary.setText(" · ".join(summary))
         has_multiple_packages = len(archive.packages) > 1
         self.package_label.setVisible(has_multiple_packages)
         self.package_list.setVisible(has_multiple_packages)
@@ -649,15 +777,17 @@ class Window(QMainWindow):
         self.statusBar().showMessage(tr('Archive opened'))
 
     def change_package(self, index):
-        if not self.archive or index < 0:
+        if not self.archive or not 0 <= index < len(self.archive.packages):
             return
+        with QSignalBlocker(self.package_list), QSignalBlocker(self.package_picker):
+            self.package_list.setCurrentRow(index)
+            self.package_picker.setCurrentIndex(index)
         self.active_package = index
         p = self.archive.packages[index]
         self.title.setText(p.title)
-        standalone = tr(' (standalone)') if p.flags & 1 else ""
-        self.package_kind.setText(p.kind_name + standalone)
         self.title_id.setText(f"{p.title_id:016X}")
-        self.display_version.setText(p.display_version)
+        self.ncm_version.setText(str(p.version))
+        self.display_version.setText(p.display_version or tr('Not declared'))
         self.publisher.setText(p.text(6) or "—")
         icon = QPixmap()
         if p.metadata.get(3):
@@ -843,22 +973,12 @@ class Window(QMainWindow):
                 self.job_failed(str(exc))
 
     def show_cover(self):
-        if self.cover_image.isNull():
-            return
-        dialog = QDialog(self)
-        dialog.setWindowTitle(tr('Cover'))
-        dialog.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
-        layout = QVBoxLayout(dialog)
-        preview = QLabel()
-        preview.setPixmap(self.cover_image.scaled(
-            360, 360, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-        ))
-        layout.addWidget(preview, alignment=Qt.AlignmentFlag.AlignCenter)
-        close_button = QPushButton(tr('Close'))
-        close_button.clicked.connect(dialog.accept)
-        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        dialog.setFixedSize(dialog.sizeHint())
-        dialog.exec()
+        if not self.cover_image.isNull():
+            show_image(self, tr('Cover'), self.cover_image)
+
+    def show_package_details(self):
+        if self.archive and not self.job:
+            PackageDetails(self.archive.packages[self.active_package], self).exec()
 
     def save_icon(self):
         if not self.archive:
